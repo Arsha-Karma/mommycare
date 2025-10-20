@@ -12,7 +12,8 @@ if(!$user_id){
 if(isset($_GET['add'])){
     $product_id = (int)$_GET['add'];
 
-    $stmt = $db->conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=?");
+    // Check if product already exists in cart with 'active' status
+    $stmt = $db->conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND status='active'");
     $stmt->bind_param("ii", $user_id, $product_id);
     $stmt->execute();
     $stmt->store_result();
@@ -20,12 +21,13 @@ if(isset($_GET['add'])){
         $stmt->bind_result($qty);
         $stmt->fetch();
         $new_qty = $qty + 1;
-        $update = $db->conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=?");
+        $update = $db->conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=? AND status='active'");
         $update->bind_param("iii",$new_qty,$user_id,$product_id);
         $update->execute();
         $update->close();
     } else {
-        $insert = $db->conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?,?,1)");
+        // Insert new item with 'active' status
+        $insert = $db->conn->prepare("INSERT INTO cart (user_id, product_id, quantity, status) VALUES (?,?,1,'active')");
         $insert->bind_param("ii",$user_id,$product_id);
         $insert->execute();
         $insert->close();
@@ -38,7 +40,7 @@ if(isset($_GET['add'])){
 // --- Remove product from cart ---
 if(isset($_POST['remove_product_id'])){
     $remove_id = (int)$_POST['remove_product_id'];
-    $stmt = $db->conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=?");
+    $stmt = $db->conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND status='active'");
     $stmt->bind_param("ii",$user_id,$remove_id);
     $stmt->execute();
     $stmt->close();
@@ -48,7 +50,7 @@ if(isset($_POST['remove_product_id'])){
 
 // --- Clear all cart items ---
 if(isset($_POST['clear_cart'])){
-    $stmt = $db->conn->prepare("DELETE FROM cart WHERE user_id=?");
+    $stmt = $db->conn->prepare("DELETE FROM cart WHERE user_id=? AND status='active'");
     $stmt->bind_param("i",$user_id);
     $stmt->execute();
     $stmt->close();
@@ -56,12 +58,12 @@ if(isset($_POST['clear_cart'])){
     exit;
 }
 
-// --- Fetch cart items with product details including image ---
-$sql = "SELECT c.quantity, c.product_id, p.* FROM cart c 
-        JOIN products p ON c.product_id=p.id 
-        WHERE c.user_id=?";
+// --- Fetch cart items with product details (only active items) ---
+$sql = "SELECT c.quantity, c.product_id, c.status, p.* FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id=? AND c.status='active'";
 $stmt = $db->conn->prepare($sql);
-$stmt->bind_param("i",$user_id);
+$stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $products_in_cart = [];
@@ -426,10 +428,10 @@ nav ul li a:hover {
         <div class="logo">mommycare</div>
         <ul>
             <li><a href="index.php">Home</a></li>
-            <li><a href="index.php#featured-products">Shop</a></li>
-            <li><a href="#">Reviews</a></li>
-            <li><a href="#">Contact</a></li>
-            <li><a href="cart.php" class="cart-link">🛒 Cart</a></li>
+            <li><a href="index.php#featured-products">Products</a></li>
+            <li><a href="orders.php">Orders</a></li>
+         
+            <li><a href="cart.php" class="cart-link">🛒 Cart (<?php echo $item_count; ?>)</a></li>
         </ul>
     </nav>
 </header>
@@ -463,7 +465,7 @@ nav ul li a:hover {
                 <div class="item-actions">
                     <div class="quantity-display">Qty: <?php echo $product['quantity']; ?></div>
                     <form method="POST">
-                        <input type="hidden" name="remove_product_id" value="<?php echo $product['id']; ?>">
+                        <input type="hidden" name="remove_product_id" value="<?php echo $product['product_id']; ?>">
                         <button type="submit" class="remove-btn">🗑️ Remove</button>
                     </form>
                 </div>
@@ -494,7 +496,6 @@ nav ul li a:hover {
                 <span>₹<?php echo number_format($grand_total,2); ?></span>
             </div>
 
-            <!-- FIXED: Changed from form POST to direct link -->
             <a href="checkout.php" class="checkout-btn">
                 🔒 Proceed to Checkout
             </a>

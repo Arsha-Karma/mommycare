@@ -42,9 +42,121 @@ button { width: 100%; padding: 10px; background: #93e2bb; border: none; color: #
 .error-message { color: red; font-size: 0.9rem; margin-bottom: 5px; }
 .success-message { color: green; text-align: center; margin-bottom: 10px; }
 a { color: #f98293; text-decoration: none; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #42375a;
+    line-height: 1.6;
+    background: #fff;
+    padding-top: 80px; /* Space for fixed header */
+}
+
+header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 5vw;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.logo {
+    font-size: 2.2rem;
+    color: #f98293;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.logo:hover {
+    transform: scale(1.05);
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2.5rem;
+    margin: 0;
+    padding: 0;
+    align-items: center;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #42375a;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 0.5rem 0;
+}
+
+nav ul li a:hover {
+    color: #f98293;
+}
+
+nav ul li a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #f98293;
+    transition: width 0.3s ease;
+}
+
+nav ul li a:hover::after {
+    width: 100%;
+}
+
+/* ===== LOGIN FORM STYLES ===== */
+.form-container { 
+    background: #fff; 
+    padding: 2rem; 
+    border-radius: 10px; 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+    width: 100%; 
+    max-width: 400px; 
+    margin: 0 auto;
+}
+h2 { text-align: center; color: #f98293; }
+input[type=text], input[type=password] { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+input.error { border-color: red; }
+button { width: 100%; padding: 10px; background: #93e2bb; border: none; color: #fff; font-size: 1rem; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+.error-message { color: red; font-size: 0.9rem; margin-bottom: 5px; }
+.success-message { color: green; text-align: center; margin-bottom: 10px; }
+a { color: #f98293; text-decoration: none; }
 </style>
 </head>
 <body>
+    <header>
+    <nav>
+        <a href="index.php" class="logo">mommycare</a>
+        <ul>
+            <li><a href="index.php">Home</a></li>
+            <li><a href="index.php#featured-products">Products</a></li>
+            <li><a href="orders.php">Orders</a></li>
+        </ul>
+    </nav>
+</header>
 <div class="form-container">
     <h2>Login</h2>
     <?php if($successMsg) echo "<div class='success-message'>$successMsg</div>"; ?>
