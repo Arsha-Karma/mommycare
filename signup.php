@@ -1,5 +1,5 @@
 <?php
-include_once 'User.php';
+include_once 'user.php';
 $userObj = new User();
 
 // Initialize error variables
