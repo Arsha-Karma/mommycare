@@ -1,6 +1,8 @@
 <?php
-session_start();
+
+require_once 'config.php'; 
 include('db.php');
+
 
 $db = new Database();
 $user_id = $_SESSION['user_id'] ?? null;
@@ -36,6 +38,61 @@ if(isset($_GET['add'])){
     header("Location: cart.php");
     exit;
 }
+
+// --- Increment quantity ---
+if(isset($_POST['increment_product_id'])){
+    $product_id = (int)$_POST['increment_product_id'];
+    
+    // Get current quantity and product stock
+    $check = $db->conn->prepare("SELECT c.quantity, p.stock FROM cart c 
+                                  JOIN products p ON c.product_id = p.id 
+                                  WHERE c.user_id=? AND c.product_id=? AND c.status='active'");
+    $check->bind_param("ii", $user_id, $product_id);
+    $check->execute();
+    $check->bind_result($current_qty, $stock);
+    $check->fetch();
+    $check->close();
+    
+    // Only increment if stock is available
+    if($current_qty < $stock){
+        $new_qty = $current_qty + 1;
+        $update = $db->conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=? AND status='active'");
+        $update->bind_param("iii", $new_qty, $user_id, $product_id);
+        $update->execute();
+        $update->close();
+        echo json_encode(['success' => true, 'quantity' => $new_qty]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Out of stock']);
+    }
+    exit;
+}
+
+// --- Decrement quantity ---
+if(isset($_POST['decrement_product_id'])){
+    $product_id = (int)$_POST['decrement_product_id'];
+    
+    // Get current quantity
+    $check = $db->conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND status='active'");
+    $check->bind_param("ii", $user_id, $product_id);
+    $check->execute();
+    $check->bind_result($current_qty);
+    $check->fetch();
+    $check->close();
+    
+    if($current_qty > 1){
+        $new_qty = $current_qty - 1;
+        $update = $db->conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=? AND status='active'");
+        $update->bind_param("iii", $new_qty, $user_id, $product_id);
+        $update->execute();
+        $update->close();
+        echo json_encode(['success' => true, 'quantity' => $new_qty]);
+    } else {
+        
+        echo json_encode(['success' => false, 'message' => 'Minimum quantity is 1', 'quantity' => 1]);
+    }
+    exit;
+}
+
 
 // --- Remove product from cart ---
 if(isset($_POST['remove_product_id'])){
@@ -260,6 +317,21 @@ nav ul li a:hover {
     font-weight: 600;
 }
 
+.stock-info {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 0.3rem;
+}
+
+.stock-warning {
+    color: #f56565;
+    font-weight: 500;
+}
+
+.stock-available {
+    color: #48bb78;
+}
+
 .item-actions {
     display: flex;
     flex-direction: column;
@@ -267,9 +339,49 @@ nav ul li a:hover {
     align-items: flex-end;
 }
 
-.quantity-display {
-    color: #4a5568;
-    font-size: 0.95rem;
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.3rem 0.6rem;
+}
+
+.qty-btn {
+    background: #f98293;
+    color: #fff;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-weight: bold;
+}
+
+.qty-btn:hover:not(:disabled) {
+    background: #e06d7f;
+    transform: scale(1.1);
+}
+
+.qty-btn:disabled {
+    background: #cbd5e0;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.qty-display {
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 1rem;
+    min-width: 35px;
+    text-align: center;
 }
 
 .remove-btn {
@@ -397,6 +509,42 @@ nav ul li a:hover {
     margin-bottom: 2rem;
 }
 
+.notification {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    background: #fff;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    z-index: 9999;
+    display: none;
+    animation: slideIn 0.3s ease;
+}
+
+.notification.show {
+    display: block;
+}
+
+.notification.error {
+    border-left: 4px solid #f56565;
+}
+
+.notification.success {
+    border-left: 4px solid #48bb78;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
 @media (max-width: 968px) {
     .cart-container {
         grid-template-columns: 1fr;
@@ -423,6 +571,8 @@ nav ul li a:hover {
 </head>
 <body>
 
+<div id="notification" class="notification"></div>
+
 <header>
     <nav>
         <div class="logo">mommycare</div>
@@ -430,8 +580,7 @@ nav ul li a:hover {
             <li><a href="index.php">Home</a></li>
             <li><a href="index.php#featured-products">Products</a></li>
             <li><a href="orders.php">Orders</a></li>
-         
-            <li><a href="cart.php" class="cart-link">🛒 Cart (<?php echo $item_count; ?>)</a></li>
+            <li><a href="cart.php" class="cart-link">🛒 Cart (<span id="cart-count"><?php echo $item_count; ?></span>)</a></li>
         </ul>
     </nav>
 </header>
@@ -445,7 +594,7 @@ nav ul li a:hover {
     <?php if(!empty($products_in_cart)): ?>
         <div class="cart-items-section">
             <div class="cart-header">
-                <h2>Cart Items (<?php echo $item_count; ?>)</h2>
+                <h2>Cart Items (<span id="item-count-header"><?php echo $item_count; ?></span>)</h2>
                 <form method="POST" style="display:inline;">
                     <input type="hidden" name="clear_cart" value="1">
                     <button type="submit" class="clear-cart-btn" onclick="return confirm('Clear all items from cart?')">
@@ -454,16 +603,35 @@ nav ul li a:hover {
                 </form>
             </div>
 
-            <?php foreach($products_in_cart as $product): ?>
-            <div class="cart-item">
+            <?php foreach($products_in_cart as $product): 
+                $in_stock = $product['stock'] > 0;
+                $can_increment = $product['quantity'] < $product['stock'];
+            ?>
+            <div class="cart-item" data-product-id="<?php echo $product['product_id']; ?>">
                 <img src="<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>">
                 <div class="item-details">
                     <h3><?php echo htmlspecialchars($product['name']); ?></h3>
                     <p><?php echo htmlspecialchars($product['description'] ?? 'Premium quality product'); ?></p>
                     <div class="item-price">₹<?php echo number_format($product['price'],2); ?></div>
+                    <div class="stock-info <?php echo $in_stock ? 'stock-available' : 'stock-warning'; ?>">
+                        <?php 
+                        if($in_stock) {
+                            echo "In Stock: " . $product['stock'] . " available";
+                        } else {
+                            echo "Out of Stock";
+                        }
+                        ?>
+                    </div>
                 </div>
                 <div class="item-actions">
-                    <div class="quantity-display">Qty: <?php echo $product['quantity']; ?></div>
+                    <div class="quantity-controls">
+                        <button class="qty-btn decrement-btn" data-product-id="<?php echo $product['product_id']; ?>">−</button>
+                        <span class="qty-display" data-product-id="<?php echo $product['product_id']; ?>"><?php echo $product['quantity']; ?></span>
+                        <button class="qty-btn increment-btn" 
+                                data-product-id="<?php echo $product['product_id']; ?>"
+                                data-stock="<?php echo $product['stock']; ?>"
+                                <?php echo !$can_increment ? 'disabled' : ''; ?>>+</button>
+                    </div>
                     <form method="POST">
                         <input type="hidden" name="remove_product_id" value="<?php echo $product['product_id']; ?>">
                         <button type="submit" class="remove-btn">🗑️ Remove</button>
@@ -478,12 +646,12 @@ nav ul li a:hover {
             
             <div class="summary-row">
                 <span>Items:</span>
-                <span><?php echo $item_count; ?></span>
+                <span id="summary-items"><?php echo $item_count; ?></span>
             </div>
             
             <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>₹<?php echo number_format($grand_total,2); ?></span>
+                <span id="summary-subtotal">₹<?php echo number_format($grand_total,2); ?></span>
             </div>
             
             <div class="summary-row">
@@ -493,7 +661,7 @@ nav ul li a:hover {
             
             <div class="summary-row total">
                 <span>Total:</span>
-                <span>₹<?php echo number_format($grand_total,2); ?></span>
+                <span id="summary-total">₹<?php echo number_format($grand_total,2); ?></span>
             </div>
 
             <a href="checkout.php" class="checkout-btn">
@@ -516,6 +684,125 @@ nav ul li a:hover {
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+// Show notification
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification ${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+
+// Update cart totals
+function updateCartTotals() {
+    let totalItems = 0;
+    let totalPrice = 0;
+    
+    document.querySelectorAll('.cart-item').forEach(item => {
+        const productId = item.dataset.productId;
+        const qtyDisplay = item.querySelector(`.qty-display[data-product-id="${productId}"]`);
+        const priceText = item.querySelector('.item-price').textContent;
+        const price = parseFloat(priceText.replace('₹', '').replace(',', ''));
+        const quantity = parseInt(qtyDisplay.textContent);
+        
+        totalItems += quantity;
+        totalPrice += price * quantity;
+    });
+    
+    document.getElementById('cart-count').textContent = totalItems;
+    document.getElementById('item-count-header').textContent = totalItems;
+    document.getElementById('summary-items').textContent = totalItems;
+    document.getElementById('summary-subtotal').textContent = '₹' + totalPrice.toFixed(2);
+    document.getElementById('summary-total').textContent = '₹' + totalPrice.toFixed(2);
+}
+
+// Increment quantity
+document.querySelectorAll('.increment-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const productId = this.dataset.productId;
+        const stock = parseInt(this.dataset.stock);
+        const qtyDisplay = document.querySelector(`.qty-display[data-product-id="${productId}"]`);
+        const currentQty = parseInt(qtyDisplay.textContent);
+        
+        if(currentQty >= stock) {
+            showNotification('Cannot add more. Out of stock!', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('increment_product_id', productId);
+        
+        try {
+            const response = await fetch('cart.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            if(result.success) {
+                qtyDisplay.textContent = result.quantity;
+                
+                // Disable increment button if reached stock limit
+                if(result.quantity >= stock) {
+                    this.disabled = true;
+                }
+                
+                updateCartTotals();
+                showNotification('Quantity updated!', 'success');
+            } else {
+                showNotification(result.message, 'error');
+            }
+        } catch(error) {
+            showNotification('Error updating quantity', 'error');
+        }
+    });
+});
+
+// Decrement quantity
+document.querySelectorAll('.decrement-btn').forEach(btn => {
+    btn.addEventListener('click', async function() {
+        const productId = this.dataset.productId;
+        const qtyDisplay = document.querySelector(`.qty-display[data-product-id="${productId}"]`);
+        const currentQty = parseInt(qtyDisplay.textContent);
+        
+        // Prevent decrement if quantity is already 1
+        if(currentQty <= 1) {
+            showNotification('Minimum quantity is 1. Use remove button to delete item.', 'error');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('decrement_product_id', productId);
+        
+        try {
+            const response = await fetch('cart.php', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            if(result.success) {
+                qtyDisplay.textContent = result.quantity;
+                
+                // Enable increment button
+                const incrementBtn = document.querySelector(`.increment-btn[data-product-id="${productId}"]`);
+                incrementBtn.disabled = false;
+                
+                updateCartTotals();
+                showNotification('Quantity updated!', 'success');
+            } else {
+                showNotification(result.message, 'error');
+            }
+        } catch(error) {
+            showNotification('Error updating quantity', 'error');
+        }
+    });
+});
+</script>
 
 </body>
 </html>

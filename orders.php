@@ -1,6 +1,8 @@
 <?php
-session_start();
+require_once 'config.php'; 
+
 include('db.php');
+
 
 $db = new Database();
 $user_id = $_SESSION['user_id'] ?? null;

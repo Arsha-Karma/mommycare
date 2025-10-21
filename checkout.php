@@ -1,8 +1,7 @@
 <?php
-session_start();
+require_once 'config.php'; 
 include('db.php');
 
-// Razorpay credentials
 define('RAZORPAY_KEY_ID', 'rzp_test_LFEA5QeDc3uh7A');
 define('RAZORPAY_KEY_SECRET', 'UcSEiMzamwDuhxLKkpPz1VUj');
 
@@ -81,7 +80,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
-/* ===== RESET & BASE STYLES ===== */
+
 * {
     margin: 0;
     padding: 0;

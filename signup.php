@@ -1,8 +1,10 @@
 <?php
+require_once 'config.php'; 
+
 include_once 'user.php';
 $userObj = new User();
 
-// Initialize error variables
+
 $nameErr = $emailErr = $passwordErr = $confirmErr = "";
 $name = $email = $password = $confirm_password = "";
 $successMsg = "";
@@ -22,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $passwordErr = $errors['password'] ?? "";
         $confirmErr = $errors['confirm_password'] ?? "";
         
-        // Check if it's a duplicate user error
+      
         if (strpos($nameErr, 'already exists') !== false || strpos($emailErr, 'already exists') !== false) {
             $nameErr = "User with this name or email already exists";
             $emailErr = "User with this name or email already exists";

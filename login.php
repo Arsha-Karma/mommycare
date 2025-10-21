@@ -1,22 +1,40 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-?>
-<?php
+require_once 'config.php'; 
 include_once 'user.php';
 
 $userObj = new User();
 
-// Initialize variables
 $identifierErr = $passwordErr = "";
 $identifier = $password = "";
 $successMsg = "";
+
+// Admin credentials
+define('ADMIN_NAME', 'Abhi');
+define('ADMIN_EMAIL', 'abhi@gmail.com');
+define('ADMIN_PASSWORD', 'abhi123');
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $identifier = trim($_POST['identifier']);
     $password = trim($_POST['password']);
 
+    // Check if it's admin login
+    $isAdmin = false;
+    if (($identifier === ADMIN_NAME || $identifier === ADMIN_EMAIL) && $password === ADMIN_PASSWORD) {
+        $isAdmin = true;
+        
+        // Set admin session
+        session_start();
+        $_SESSION['user_id'] = 'admin';
+        $_SESSION['user_name'] = ADMIN_NAME;
+        $_SESSION['user_email'] = ADMIN_EMAIL;
+        $_SESSION['is_admin'] = true;
+        
+        // Redirect to admin page
+        header("Location: admin.php");
+        exit;
+    }
+
+    // If not admin, check regular user login
     $result = $userObj->login($identifier, $password);
 
     if (!$result['success']) {
@@ -25,6 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $passwordErr   = $result['errors']['password'] ?? "";
     } else {
         $successMsg = $result['message'];
+        // Redirect to user index page
         header("Location: index.php");
         exit;
     }
@@ -38,15 +57,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <title>Login - mommycare</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: Arial, sans-serif; background: #f8f5f9; display: flex; justify-content: center; align-items: center; height: 100vh; }
-.form-container { background: #fff; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-h2 { text-align: center; color: #f98293; }
-input[type=text], input[type=password] { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
-input.error { border-color: red; }
-button { width: 100%; padding: 10px; background: #93e2bb; border: none; color: #fff; font-size: 1rem; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-.error-message { color: red; font-size: 0.9rem; margin-bottom: 5px; }
-.success-message { color: green; text-align: center; margin-bottom: 10px; }
-a { color: #f98293; text-decoration: none; }
 * {
     margin: 0;
     padding: 0;
@@ -57,8 +67,8 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #42375a;
     line-height: 1.6;
-    background: #fff;
-    padding-top: 80px; /* Space for fixed header */
+    background: #f8f5f9;
+    padding-top: 80px;
 }
 
 header {
@@ -132,7 +142,6 @@ nav ul li a:hover::after {
     width: 100%;
 }
 
-/* ===== LOGIN FORM STYLES ===== */
 .form-container { 
     background: #fff; 
     padding: 2rem; 
@@ -140,19 +149,67 @@ nav ul li a:hover::after {
     box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
     width: 100%; 
     max-width: 400px; 
-    margin: 0 auto;
+    margin: 2rem auto;
 }
-h2 { text-align: center; color: #f98293; }
-input[type=text], input[type=password] { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
-input.error { border-color: red; }
-button { width: 100%; padding: 10px; background: #93e2bb; border: none; color: #fff; font-size: 1rem; border-radius: 5px; cursor: pointer; margin-top: 10px; }
-.error-message { color: red; font-size: 0.9rem; margin-bottom: 5px; }
-.success-message { color: green; text-align: center; margin-bottom: 10px; }
-a { color: #f98293; text-decoration: none; }
+
+h2 { 
+    text-align: center; 
+    color: #f98293; 
+    margin-bottom: 1.5rem;
+}
+
+input[type=text], input[type=password] { 
+    width: 100%; 
+    padding: 10px; 
+    margin: 5px 0; 
+    border-radius: 5px; 
+    border: 1px solid #ccc; 
+}
+
+input.error { 
+    border-color: red; 
+}
+
+button { 
+    width: 100%; 
+    padding: 10px; 
+    background: #93e2bb; 
+    border: none; 
+    color: #fff; 
+    font-size: 1rem; 
+    border-radius: 5px; 
+    cursor: pointer; 
+    margin-top: 10px; 
+}
+
+button:hover {
+    background: #7dc9a5;
+}
+
+.error-message { 
+    color: red; 
+    font-size: 0.9rem; 
+    margin-bottom: 5px; 
+}
+
+.success-message { 
+    color: green; 
+    text-align: center; 
+    margin-bottom: 10px; 
+}
+
+a { 
+    color: #f98293; 
+    text-decoration: none; 
+}
+
+a:hover {
+    text-decoration: underline;
+}
 </style>
 </head>
 <body>
-    <header>
+<header>
     <nav>
         <a href="index.php" class="logo">mommycare</a>
         <ul>
@@ -162,6 +219,7 @@ a { color: #f98293; text-decoration: none; }
         </ul>
     </nav>
 </header>
+
 <div class="form-container">
     <h2>Login</h2>
     <?php if($successMsg) echo "<div class='success-message'>$successMsg</div>"; ?>

@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once 'config.php'; 
 include('db.php');
 
 $db = new Database();
@@ -618,7 +618,7 @@ if(empty($order_items)){
         <ul>
             <li><a href="index.php">Home</a></li>
             <li><a href="index.php#featured-products">Shop</a></li>
-            <li><a href="#">Reviews</a></li>
+            
         </ul>
         <a href="cart.php" class="cart-link">🛒 View Cart</a>
     </nav>

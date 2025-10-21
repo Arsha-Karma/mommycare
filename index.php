@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once 'config.php'; 
 include('db.php');
 
 // ------------------ Product Class ------------------
@@ -74,21 +74,8 @@ if(isset($_GET['add'])) {
             $stmt->store_result();
 
             if($stmt->num_rows > 0){
-                // Product exists in active cart, increment quantity
-                $stmt->bind_result($cart_id, $qty);
-                $stmt->fetch();
-                $new_qty = $qty + 1;
-                
-                // Check if new quantity doesn't exceed stock
-                if ($new_qty <= $productData['stock']) {
-                    $update = $db->conn->prepare("UPDATE cart SET quantity=? WHERE id=?");
-                    $update->bind_param("ii", $new_qty, $cart_id);
-                    $update->execute();
-                    $update->close();
-                    $_SESSION['cart_message'] = 'Item quantity updated in cart!';
-                } else {
-                    $_SESSION['cart_message'] = 'Cannot add more. Stock limit reached!';
-                }
+                // Product already exists in active cart - don't add again
+                $_SESSION['cart_message'] = 'Item already in cart! Update quantity from cart page.';
             } else {
                 // Check if there's a completed order for same product
                 $checkCompleted = $db->conn->prepare("SELECT id FROM cart WHERE user_id=? AND product_id=? AND status='completed'");
@@ -128,6 +115,7 @@ if(isset($_GET['add'])) {
     header("Location: index.php#featured-products");
     exit;
 }
+
 
 ?>
 <!DOCTYPE html>
@@ -823,6 +811,204 @@ footer p {
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #e06d7f 0%, #d45a6d 100%);
 }
+.search-container {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+    margin: 0 2rem;
+}
+
+.search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.8rem 1.2rem 0.8rem 3rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 25px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    outline: none;
+    background: #fff;
+}
+
+.search-input:focus {
+    border-color: #f98293;
+    box-shadow: 0 0 0 3px rgba(249, 130, 147, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    color: #718096;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.clear-search {
+    position: absolute;
+    right: 1rem;
+    background: #f98293;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.clear-search:hover {
+    background: #e06d7f;
+    transform: scale(1.1);
+}
+
+.clear-search.show {
+    display: flex;
+}
+
+.search-results-info {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #42375a;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.search-results-info .search-term {
+    color: #f98293;
+    font-weight: 700;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.no-results-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.no-results h3 {
+    color: #42375a;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.no-results p {
+    color: #718096;
+    font-size: 1rem;
+}
+
+@media (max-width: 480px) {
+    .logo {
+        font-size: 1.8rem;
+    }
+    
+    .hero h1 {
+        font-size: 1.8rem;
+    }
+    
+    .hero p {
+        font-size: 1rem;
+    }
+    
+    .products h2,
+    .about h2 {
+        font-size: 1.8rem;
+    }
+    
+    .product-list {
+        grid-template-columns: 1fr;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+    
+    .cart-btn,
+    .login-link {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+    }
+    
+    .toast {
+        right: 15px;
+        left: 15px;
+        max-width: none;
+    }
+}
+
+/* ===== SEARCH RESULTS COMPACT VIEW ===== */
+.product-list.search-active .product-card {
+    padding: 1rem;
+    max-width: 280px;
+    margin: 0 auto;
+}
+
+.product-list.search-active .product-card img {
+    width: 60%;
+    height: 120px;
+    margin-bottom: 0.8rem;
+}
+
+.product-list.search-active .product-card h3 {
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+}
+
+.product-list.search-active .product-card .price {
+    font-size: 1.2rem;
+    margin: 0.4rem 0;
+}
+
+.product-list.search-active .product-card .stock-info {
+    font-size: 0.8rem;
+    margin: 0.3rem 0;
+}
+
+.product-list.search-active .product-card .add-to-cart-btn,
+.product-list.search-active .product-card .out-of-stock {
+    padding: 0.5rem 1.2rem;
+    font-size: 0.85rem;
+    margin-top: 0.6rem;
+}
+
+@media (min-width: 769px) {
+    .product-list.search-active {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1.5rem;
+        max-width: 1200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .product-list.search-active .product-card {
+        max-width: 100%;
+    }
+    
+    .product-list.search-active .product-card img {
+        width: 50%;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-list.search-active .product-card img {
+        width: 55%;
+        height: 110px;
+    }
+}
 </style>
 </head>
 <body>
@@ -838,7 +1024,23 @@ footer p {
 
 <header>
     <nav>
-        <a href="#" class="logo">mommycare</a>
+        <a href="index.php" class="logo">mommycare</a>
+        
+        <!-- Search Bar -->
+        <div class="search-container">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="Search products..."
+                    autocomplete="off"
+                >
+                <button class="clear-search" id="clearSearch" aria-label="Clear search">×</button>
+            </div>
+        </div>
+        
         <ul>
             <li><a href="index.php">Home</a></li>
             <li><a href="#featured-products">Products</a></li>
@@ -875,7 +1077,6 @@ footer p {
         </div>
     </nav>
 </header>
-
 <div class="hero">
     <h1>Welcome to mommycare</h1>
     <p>Your loving store for New Born Baby Clothes – Comfort, Style & Care</p>
@@ -884,32 +1085,37 @@ footer p {
 
 <main>
     <section id="featured-products" class="products">
-        <h2>Featured Products</h2>
-        <div class="product-list">
-            <?php if (!empty($products)): ?>
-                <?php foreach ($products as $product): ?>
-                    <div class="product-card">
-                        <img src="<?php echo htmlspecialchars($product['image']); ?>" 
-                             alt="<?php echo htmlspecialchars($product['name']); ?>">
-                        <h3><?php echo htmlspecialchars($product['name']); ?></h3>
-                        <p class="price">₹<?php echo number_format($product['price'], 2); ?></p>
-                        <p class="stock-info">Stock: <?php echo (int)$product['stock']; ?> available</p>
-                        <?php if ($product['stock'] > 0): ?>
-                            <a href="index.php?add=<?php echo $product['id']; ?>" class="add-to-cart-btn">
-                                🛒 Add to Cart
-                            </a>
-                        <?php else: ?>
-                            <span class="out-of-stock">❌ Out of Stock</span>
-                        <?php endif; ?>
-                    </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem; color: #666;">
-                    No products available right now. Please check back later.
-                </p>
-            <?php endif; ?>
-        </div>
-    </section>
+    <h2>Featured Products</h2>
+    <div id="searchResultsInfo" class="search-results-info" style="display: none;">
+        Showing results for "<span class="search-term" id="searchTerm"></span>"
+        <span id="resultCount"></span>
+    </div>
+    <div class="product-list" id="productList">
+        <?php if (!empty($products)): ?>
+            <?php foreach ($products as $product): ?>
+                <div class="product-card" data-product-name="<?php echo strtolower(htmlspecialchars($product['name'])); ?>" data-product-id="<?php echo $product['id']; ?>">
+                    <img src="<?php echo htmlspecialchars($product['image']); ?>" 
+                         alt="<?php echo htmlspecialchars($product['name']); ?>">
+                    <h3><?php echo htmlspecialchars($product['name']); ?></h3>
+                    <p class="price">₹<?php echo number_format($product['price'], 2); ?></p>
+                    <p class="stock-info">Stock: <?php echo (int)$product['stock']; ?> available</p>
+                    <?php if ($product['stock'] > 0): ?>
+                        <a href="index.php?add=<?php echo $product['id']; ?>" class="add-to-cart-btn">
+                            🛒 Add to Cart
+                        </a>
+                    <?php else: ?>
+                        <span class="out-of-stock">❌ Out of Stock</span>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <p style="text-align:center; grid-column: 1/-1; font-size: 1.2rem; color: #666;">
+                No products available right now. Please check back later.
+            </p>
+        <?php endif; ?>
+    </div>
+</section>
+
 
     <section class="about">
         <h2>Why Choose mommycare?</h2>
@@ -984,6 +1190,113 @@ window.addEventListener('scroll', () => {
     } else {
         header.style.background = 'rgba(255, 255, 255, 0.98)';
         header.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
+    }
+});
+// Search functionality
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearch');
+const productCards = document.querySelectorAll('.product-card');
+const searchResultsInfo = document.getElementById('searchResultsInfo');
+const searchTerm = document.getElementById('searchTerm');
+const resultCount = document.getElementById('resultCount');
+const productList = document.getElementById('productList');
+
+// Show/hide clear button
+searchInput.addEventListener('input', function() {
+    if (this.value.length > 0) {
+        clearSearchBtn.classList.add('show');
+    } else {
+        clearSearchBtn.classList.remove('show');
+    }
+    filterProducts();
+});
+
+// Clear search
+clearSearchBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    clearSearchBtn.classList.remove('show');
+    filterProducts();
+    searchInput.focus();
+});
+
+// Filter products based on search input
+function filterProducts() {
+    const searchValue = searchInput.value.toLowerCase().trim();
+    let visibleCount = 0;
+    let hasNoResults = false;
+
+    // Remove any existing no-results message
+    const existingNoResults = document.querySelector('.no-results');
+    if (existingNoResults) {
+        existingNoResults.remove();
+    }
+
+    if (searchValue === '') {
+        // Show all products when search is empty
+        productCards.forEach(card => {
+            card.style.display = 'block';
+        });
+        searchResultsInfo.style.display = 'none';
+        return;
+    }
+
+    // Filter products
+    productCards.forEach(card => {
+        const productName = card.dataset.productName;
+        
+        // Check if product name starts with search term or contains it
+        if (productName.startsWith(searchValue) || productName.includes(searchValue)) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Show search results info
+    searchResultsInfo.style.display = 'block';
+    searchTerm.textContent = searchInput.value;
+    resultCount.textContent = ` (${visibleCount} ${visibleCount === 1 ? 'product' : 'products'} found)`;
+
+    // Show no results message if no products match
+    if (visibleCount === 0) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = 'no-results';
+        noResultsDiv.innerHTML = `
+            <div class="no-results-icon">🔍</div>
+            <h3>No products found</h3>
+            <p>Try searching with different keywords</p>
+        `;
+        productList.appendChild(noResultsDiv);
+    }
+
+    // Scroll to products section
+    document.getElementById('featured-products').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+    });
+}
+
+// Clear search when clicking on logo
+document.querySelector('.logo').addEventListener('click', function() {
+    searchInput.value = '';
+    clearSearchBtn.classList.remove('show');
+    filterProducts();
+});
+
+// Keyboard shortcut: Press '/' to focus search
+document.addEventListener('keydown', function(e) {
+    if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+    }
+    
+    // Press 'Escape' to clear search
+    if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+        clearSearchBtn.classList.remove('show');
+        filterProducts();
+        searchInput.blur();
     }
 });
 </script>
